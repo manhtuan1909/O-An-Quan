@@ -1,0 +1,6 @@
+# Ô Ăn Quan - Dependencies
+
+# Future:
+# pygame>=2.5.0  # Cho giao diện đồ họa
+# numpy>=1.24.0  # Cho AI/Machine Learning
+
