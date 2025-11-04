@@ -22,6 +22,6 @@ def main():
     
     # Chạy ứng dụng
     root.mainloop()
-
+    # Test
 if __name__ == "__main__":
     main()
