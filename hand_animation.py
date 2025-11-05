@@ -9,6 +9,8 @@ class HandAnimation:
         self.canvas = canvas
         self.image_folder = image_folder
 
+        self.raiso_img = ImageTk.PhotoImage(Image.open(os.path.join(image_folder, "raison.png")).resize((155, 57)))
+        self.raiso_label = None
         # Load 4 ảnh tay
         self.hand_imgs = {
             "h0": ImageTk.PhotoImage(Image.open(os.path.join(image_folder, "h0.png")).resize((60, 60))),
@@ -62,6 +64,13 @@ class HandAnimation:
         self.canvas.update()
         time.sleep(0.25)
 
+         # Hiển thị ảnh "Rải Sỏi"
+        if self.raiso_label:
+            self.canvas.delete(self.raiso_label)
+        self.raiso_label = self.canvas.create_image(600, 80, image=self.raiso_img, anchor="center")
+        self.canvas.update()
+
+
         for i in range(stones):
             if direction == "right":
                 idx = (idx + 1) % 12
@@ -77,7 +86,7 @@ class HandAnimation:
             ui.draw_board(board_state)
             self.canvas.update()
             time.sleep(0.18)
-
+        
         # Kiểm tra ô kế tiếp có rỗng không => chỉ đập 1 lần ở ô đó
         next_idx = (idx + 1) % 12 if direction == "right" else (idx - 1) % 12
         if board_state[next_idx] == 0:
