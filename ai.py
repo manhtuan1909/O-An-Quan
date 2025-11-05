@@ -1,0 +1,330 @@
+"""Minimax AI cho game Ô Ăn Quan với 3 cấp độ."""
+import copy
+import time
+from constants import *
+
+
+class OAnQuanAI:
+    """AI sử dụng Minimax/Alpha-Beta algorithm."""
+    
+    def __init__(self, difficulty='medium'):
+        self.difficulty = difficulty
+        self.depth, self.use_alpha_beta = self._get_config(difficulty)
+        self.max_player = 2
+        self.min_player = 1
+        self.log = {
+            'total_moves': 0,
+            'total_time': 0,
+            'avg_time': 0,
+            'nodes_evaluated': 0,
+            'pruning_count': 0
+        }
+    
+    def _get_config(self, difficulty):
+        """Lấy config theo độ khó."""
+        configs = {
+            'easy': (2, False),
+            'medium': (4, True),
+            'hard': (6, True)
+        }
+        return configs.get(difficulty, (4, True))
+    
+    def get_best_move(self, game_board):
+        """Tìm nước đi tốt nhất cho AI."""
+        start_time = time.time()
+        self.log['nodes_evaluated'] = 0
+        self.log['pruning_count'] = 0
+        
+        best_score = float('-inf')
+        best_move = None
+        
+        possible_moves = self._get_possible_moves(game_board, 2)
+        
+        if not possible_moves:
+            return None
+        
+        print(f"AI đang tính toán {len(possible_moves)} nước đi...")
+        
+        for cell_id, direction in possible_moves:
+            board_copy = self._copy_board(game_board)
+            self._simulate_move(board_copy, cell_id, direction, 2)
+            
+            if self.use_alpha_beta:
+                score = self._minimax_alpha_beta(
+                    board_copy,
+                    self.depth - 1,
+                    float('-inf'),
+                    float('inf'),
+                    False
+                )
+            else:
+                score = self._minimax(
+                    board_copy,
+                    self.depth - 1,
+                    False
+                )
+            
+            if score > best_score:
+                best_score = score
+                best_move = (cell_id, direction)
+        
+        elapsed_time = time.time() - start_time
+        self.log['total_moves'] += 1
+        self.log['total_time'] += elapsed_time
+        self.log['avg_time'] = self.log['total_time'] / self.log['total_moves']
+        
+        print(f"AI chọn: Ô {best_move[0]}, Hướng {best_move[1]} (Score: {best_score:.2f})")
+        print(f"Thời gian: {elapsed_time:.3f}s | Nodes: {self.log['nodes_evaluated']} | Pruning: {self.log['pruning_count']}")
+        print(f"Trung bình: {self.log['avg_time']:.3f}s/nước")
+        
+        return best_move
+    
+    def _get_possible_moves(self, game_board, player):
+        """Lấy tất cả nước đi có thể của player."""
+        moves = []
+        
+        if player == 1:
+            cells = PLAYER1_CELLS
+        else:
+            cells = PLAYER2_CELLS
+        
+        for cell_id in cells:
+            if not game_board.cells[cell_id].is_empty():
+                moves.append((cell_id, 'left'))
+                moves.append((cell_id, 'right'))
+        
+        return moves
+    
+    def _minimax(self, board, depth, is_maximizing):
+        """Minimax algorithm."""
+        self.log['nodes_evaluated'] += 1
+        
+        if depth == 0 or self._is_terminal(board):
+            return self._evaluate(board, self.difficulty)
+        
+        player = 2 if is_maximizing else 1
+        possible_moves = self._get_possible_moves(board, player)
+        
+        if not possible_moves:
+            return self._evaluate(board, self.difficulty)
+        
+        if is_maximizing:
+            max_score = float('-inf')
+            for move_cell, move_dir in possible_moves:
+                board_copy = self._copy_board(board)
+                self._simulate_move(board_copy, move_cell, move_dir, player)
+                score = self._minimax(board_copy, depth - 1, False)
+                max_score = max(max_score, score)
+            return max_score
+        else:
+            min_score = float('inf')
+            for move_cell, move_dir in possible_moves:
+                board_copy = self._copy_board(board)
+                self._simulate_move(board_copy, move_cell, move_dir, player)
+                score = self._minimax(board_copy, depth - 1, True)
+                min_score = min(min_score, score)
+            return min_score
+    
+    def _minimax_alpha_beta(self, board, depth, alpha, beta, is_maximizing):
+        """Minimax với Alpha-Beta Pruning."""
+        self.log['nodes_evaluated'] += 1
+        
+        if depth == 0 or self._is_terminal(board):
+            return self._evaluate(board, self.difficulty)
+        
+        player = 2 if is_maximizing else 1
+        possible_moves = self._get_possible_moves(board, player)
+        
+        if not possible_moves:
+            return self._evaluate(board, self.difficulty)
+        
+        if is_maximizing:
+            max_score = float('-inf')
+            for move_cell, move_dir in possible_moves:
+                board_copy = self._copy_board(board)
+                self._simulate_move(board_copy, move_cell, move_dir, player)
+                score = self._minimax_alpha_beta(
+                    board_copy, depth - 1, alpha, beta, False
+                )
+                max_score = max(max_score, score)
+                alpha = max(alpha, score)
+                
+                if beta <= alpha:
+                    self.log['pruning_count'] += 1
+                    break
+            
+            return max_score
+        else:
+            min_score = float('inf')
+            for move_cell, move_dir in possible_moves:
+                board_copy = self._copy_board(board)
+                self._simulate_move(board_copy, move_cell, move_dir, player)
+                score = self._minimax_alpha_beta(
+                    board_copy, depth - 1, alpha, beta, True
+                )
+                min_score = min(min_score, score)
+                beta = min(beta, score)
+                
+                if beta <= alpha:
+                    self.log['pruning_count'] += 1
+                    break
+            
+            return min_score
+    
+    def _simulate_move(self, board, cell_id, direction, player):
+        """Simulate một nước đi."""
+        stones = board.pick_stones(cell_id)
+        if not stones:
+            return
+        
+        if player == 1:
+            offset = 1 if direction == 'left' else -1
+        else:
+            offset = -1 if direction == 'left' else 1
+        
+        current_cell = cell_id
+        for stone in stones:
+            current_cell = (current_cell + offset) % 12
+            board.drop_stone(current_cell, stone)
+        
+        next_cell = (current_cell + offset) % 12
+        
+        if board.cells[next_cell].is_empty():
+            capture_cell = (next_cell + offset) % 12
+            if not board.cells[capture_cell].is_empty():
+                if capture_cell in QUAN_CELLS:
+                    has_quan = any(s.type == "Quan" for s in board.cells[capture_cell].stones)
+                    if has_quan:
+                        num_dan = sum(1 for s in board.cells[capture_cell].stones if s.type != "Quan")
+                        if num_dan < 5:
+                            return
+                
+                captured = board.pick_stones(capture_cell)
+                board.capture_stones(player, captured)
+                
+                next_empty = (capture_cell + offset) % 12
+                if board.cells[next_empty].is_empty():
+                    next_capture = (next_empty + offset) % 12
+                    if not board.cells[next_capture].is_empty():
+                        if next_capture in QUAN_CELLS:
+                            has_quan = any(s.type == "Quan" for s in board.cells[next_capture].stones)
+                            if has_quan:
+                                num_dan = sum(1 for s in board.cells[next_capture].stones if s.type != "Quan")
+                                if num_dan >= 5:
+                                    captured2 = board.pick_stones(next_capture)
+                                    board.capture_stones(player, captured2)
+        
+        elif next_cell in QUAN_CELLS:
+            return
+        else:
+            self._simulate_move(board, current_cell, direction, player)
+    
+    def _evaluate(self, board, difficulty):
+        """Đánh giá điểm số theo độ khó."""
+        if difficulty == 'easy':
+            return self._evaluate_simple(board)
+        elif difficulty == 'medium':
+            return self._evaluate_advanced(board)
+        else:
+            return self._evaluate_complex(board)
+    
+    def _evaluate_simple(self, board):
+        """Heuristic đơn giản: Chênh lệch điểm."""
+        score2 = board.calculate_score(2)
+        score1 = board.calculate_score(1)
+        return score2 - score1
+    
+    def _evaluate_advanced(self, board):
+        """Heuristic nâng cao: Điểm + Vị trí + Quan."""
+        score2 = board.calculate_score(2)
+        score1 = board.calculate_score(1)
+        base_score = score2 - score1
+        
+        quan_bonus = 0
+        if not board.cells[5].is_empty():
+            has_quan_5 = any(s.type == "Quan" for s in board.cells[5].stones)
+            if has_quan_5:
+                quan_bonus += 5
+        if not board.cells[11].is_empty():
+            has_quan_11 = any(s.type == "Quan" for s in board.cells[11].stones)
+            if has_quan_11:
+                quan_bonus += 5
+        
+        p2_stones = sum(board.cells[i].count() for i in PLAYER2_CELLS)
+        p1_stones = sum(board.cells[i].count() for i in PLAYER1_CELLS)
+        position_bonus = (p2_stones - p1_stones) * 0.1
+        
+        return base_score + quan_bonus + position_bonus
+    
+    def _evaluate_complex(self, board):
+        """Heuristic phức tạp: Tất cả + Chiến thuật."""
+        score2 = board.calculate_score(2)
+        score1 = board.calculate_score(1)
+        base_score = score2 - score1
+        
+        quan_bonus = 0
+        if not board.cells[5].is_empty():
+            has_quan_5 = any(s.type == "Quan" for s in board.cells[5].stones)
+            if has_quan_5:
+                num_dan_5 = sum(1 for s in board.cells[5].stones if s.type != "Quan")
+                quan_bonus += 5 + num_dan_5 * 0.5
+        if not board.cells[11].is_empty():
+            has_quan_11 = any(s.type == "Quan" for s in board.cells[11].stones)
+            if has_quan_11:
+                num_dan_11 = sum(1 for s in board.cells[11].stones if s.type != "Quan")
+                quan_bonus += 5 + num_dan_11 * 0.5
+        
+        p2_stones = sum(board.cells[i].count() for i in PLAYER2_CELLS)
+        p1_stones = sum(board.cells[i].count() for i in PLAYER1_CELLS)
+        position_bonus = (p2_stones - p1_stones) * 0.15
+        
+        strategy_bonus = 0
+        for quan_cell in [5, 11]:
+            if not board.cells[quan_cell].is_empty():
+                prev_cell = (quan_cell - 1) % 12
+                if board.cells[prev_cell].is_empty():
+                    next_cell = (quan_cell + 1) % 12
+                    if not board.cells[next_cell].is_empty():
+                        num_dan = sum(1 for s in board.cells[next_cell].stones if s.type != "Quan")
+                        if num_dan >= 5:
+                            strategy_bonus += 10
+        
+        threat_penalty = 0
+        for cell_id in PLAYER1_CELLS:
+            if board.cells[cell_id].count() > 0:
+                next_cell = (cell_id + 1) % 12
+                if next_cell in PLAYER2_CELLS and board.cells[next_cell].is_empty():
+                    threat_penalty -= 2
+        
+        return base_score + quan_bonus + position_bonus + strategy_bonus + threat_penalty
+    
+    def _is_terminal(self, board):
+        """Kiểm tra game kết thúc."""
+        return board.cells[5].is_empty() and board.cells[11].is_empty()
+    
+    def _copy_board(self, board):
+        """Copy board state để simulate."""
+        from stone import GameBoard, Stone
+        new_board = GameBoard()
+        
+        for cell_id in range(12):
+            new_board.cells[cell_id].stones = []
+            for stone in board.cells[cell_id].stones:
+                new_stone = Stone(stone.id, stone.type, stone.image_path)
+                new_stone.x = stone.x
+                new_stone.y = stone.y
+                new_board.cells[cell_id].stones.append(new_stone)
+        
+        new_board.player1_captured = [
+            Stone(s.id, s.type, s.image_path) for s in board.player1_captured
+        ]
+        new_board.player2_captured = [
+            Stone(s.id, s.type, s.image_path) for s in board.player2_captured
+        ]
+        
+        return new_board
+    
+    def get_log_stats(self):
+        """Lấy thống kê log."""
+        return self.log.copy()
+
