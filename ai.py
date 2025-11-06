@@ -45,9 +45,36 @@ class OAnQuanAI:
         
         print(f"AI đang tính toán {len(possible_moves)} nước đi...")
         
+        # BƯỚC 1: Kiểm tra nước đi thắng ngay (winning move) - ưu tiên cao nhất
+        winning_move = self._find_winning_move(game_board, possible_moves)
+        if winning_move:
+            elapsed_time = time.time() - start_time
+            self.log['total_moves'] += 1
+            self.log['total_time'] += elapsed_time
+            self.log['avg_time'] = self.log['total_time'] / self.log['total_moves']
+            print(f"AI chọn: Ô {winning_move[0]}, Hướng {winning_move[1]} (WINNING MOVE!)")
+            print(f"Thời gian: {elapsed_time:.3f}s | Nodes: {self.log['nodes_evaluated']} | Pruning: {self.log['pruning_count']}")
+            return winning_move
+        
+        # BƯỚC 2: Sử dụng minimax để tìm nước đi tốt nhất
         for cell_id, direction in possible_moves:
             board_copy = self._copy_board(game_board)
             self._simulate_move(board_copy, cell_id, direction, 2)
+            
+            # Kiểm tra nếu move này dẫn đến thắng ngay
+            if self._is_terminal(board_copy):
+                # Kiểm tra ai thắng
+                score2 = board_copy.calculate_score(2)
+                score1 = board_copy.calculate_score(1)
+                if score2 > score1:
+                    # AI thắng - đây là nước đi tốt nhất
+                    elapsed_time = time.time() - start_time
+                    self.log['total_moves'] += 1
+                    self.log['total_time'] += elapsed_time
+                    self.log['avg_time'] = self.log['total_time'] / self.log['total_moves']
+                    print(f"AI chọn: Ô {cell_id}, Hướng {direction} (WINNING MOVE!)")
+                    print(f"Thời gian: {elapsed_time:.3f}s | Nodes: {self.log['nodes_evaluated']} | Pruning: {self.log['pruning_count']}")
+                    return (cell_id, direction)
             
             if self.use_alpha_beta:
                 score = self._minimax_alpha_beta(
@@ -95,11 +122,38 @@ class OAnQuanAI:
         
         return moves
     
+    def _find_winning_move(self, board, possible_moves):
+        """Tìm nước đi có thể ăn quan để thắng ngay."""
+        for cell_id, direction in possible_moves:
+            board_copy = self._copy_board(board)
+            self._simulate_move(board_copy, cell_id, direction, 2)
+            
+            # Kiểm tra nếu game kết thúc sau nước đi này
+            if self._is_terminal(board_copy):
+                score2 = board_copy.calculate_score(2)
+                score1 = board_copy.calculate_score(1)
+                # Nếu AI thắng, đây là nước đi thắng
+                if score2 > score1:
+                    return (cell_id, direction)
+        
+        return None
+    
     def _minimax(self, board, depth, is_maximizing):
         """Minimax algorithm."""
         self.log['nodes_evaluated'] += 1
         
-        if depth == 0 or self._is_terminal(board):
+        # Kiểm tra điều kiện thắng trước khi đánh giá
+        if self._is_terminal(board):
+            score2 = board.calculate_score(2)
+            score1 = board.calculate_score(1)
+            if score2 > score1:
+                return 10000  # AI thắng - điểm rất cao
+            elif score1 > score2:
+                return -10000  # AI thua - điểm rất thấp
+            else:
+                return 0  # Hòa
+        
+        if depth == 0:
             return self._evaluate(board, self.difficulty)
         
         player = 2 if is_maximizing else 1
@@ -129,7 +183,18 @@ class OAnQuanAI:
         """Minimax với Alpha-Beta Pruning."""
         self.log['nodes_evaluated'] += 1
         
-        if depth == 0 or self._is_terminal(board):
+        # Kiểm tra điều kiện thắng trước khi đánh giá
+        if self._is_terminal(board):
+            score2 = board.calculate_score(2)
+            score1 = board.calculate_score(1)
+            if score2 > score1:
+                return 10000  # AI thắng - điểm rất cao
+            elif score1 > score2:
+                return -10000  # AI thua - điểm rất thấp
+            else:
+                return 0  # Hòa
+        
+        if depth == 0:
             return self._evaluate(board, self.difficulty)
         
         player = 2 if is_maximizing else 1
@@ -275,6 +340,25 @@ class OAnQuanAI:
         score1 = board.calculate_score(1)
         base_score = score2 - score1
         
+        # KIỂM TRA CƠ HỘI ĂN QUAN ĐỂ THẮNG - Ưu tiên cao nhất
+        # Kiểm tra xem AI có thể ăn quan của đối thủ (cell 11) không
+        capture_quan_bonus = 0
+        if not board.cells[11].is_empty():
+            has_quan_11 = any(s.type == "Quan" for s in board.cells[11].stones)
+            if has_quan_11:
+                num_dan_11 = sum(1 for s in board.cells[11].stones if s.type != "Quan")
+                # Nếu có thể ăn quan (>= 5 dân), bonus rất lớn
+                if num_dan_11 >= 5:
+                    # Kiểm tra xem có nước đi nào có thể ăn quan này không
+                    possible_moves_p2 = self._get_possible_moves(board, 2)
+                    for cell_id, direction in possible_moves_p2:
+                        board_test = self._copy_board(board)
+                        self._simulate_move(board_test, cell_id, direction, 2)
+                        # Nếu sau nước đi này, quan 11 bị ăn
+                        if board_test.cells[11].is_empty():
+                            capture_quan_bonus = 500  # Bonus cực lớn để ưu tiên
+                            break
+        
         # Đánh giá quan chi tiết hơn
         quan_bonus = 0
         if not board.cells[5].is_empty():
@@ -286,7 +370,11 @@ class OAnQuanAI:
             has_quan_11 = any(s.type == "Quan" for s in board.cells[11].stones)
             if has_quan_11:
                 num_dan_11 = sum(1 for s in board.cells[11].stones if s.type != "Quan")
-                quan_bonus += 5 + num_dan_11 * 0.4  # Quan của P1 cần phòng thủ
+                # Nếu quan của đối thủ có thể bị ăn, giảm bonus phòng thủ
+                if num_dan_11 >= 5:
+                    quan_bonus -= 10  # Phạt nếu để quan đối thủ dễ bị ăn
+                else:
+                    quan_bonus += 5 + num_dan_11 * 0.4  # Quan của P1 cần phòng thủ
         
         # Bonus vị trí (trọng số cao hơn)
         p2_stones = sum(board.cells[i].count() for i in PLAYER2_CELLS)
@@ -372,11 +460,24 @@ class OAnQuanAI:
             if has_quan_11:
                 num_dan_11 = sum(1 for s in board.cells[11].stones if s.type != "Quan")
                 if num_dan_11 >= 5:
-                    aggressive_bonus += 30  # Bonus lớn để tấn công quan đối thủ
+                    # Kiểm tra xem có nước đi nào có thể ăn quan này không
+                    possible_moves_p2 = self._get_possible_moves(board, 2)
+                    can_capture_quan = False
+                    for cell_id, direction in possible_moves_p2:
+                        board_test = self._copy_board(board)
+                        self._simulate_move(board_test, cell_id, direction, 2)
+                        if board_test.cells[11].is_empty():
+                            can_capture_quan = True
+                            break
+                    
+                    if can_capture_quan:
+                        aggressive_bonus += 100  # Bonus cực lớn nếu có thể ăn quan ngay
+                    else:
+                        aggressive_bonus += 30  # Bonus lớn để tấn công quan đối thủ
                 else:
                     aggressive_bonus += 5  # Vẫn có giá trị nhưng ít hơn
         
-        return base_score + quan_bonus + position_bonus + mobility_bonus + \
+        return base_score + capture_quan_bonus + quan_bonus + position_bonus + mobility_bonus + \
                capture_potential + strategy_bonus + threat_penalty + defense_bonus + aggressive_bonus
     
     def _evaluate_capture_potential(self, board, player):
