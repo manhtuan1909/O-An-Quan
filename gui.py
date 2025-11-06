@@ -1,4 +1,3 @@
-"""GUI module cho game Ô Ăn Quan."""
 import tkinter as tk
 from PIL import Image, ImageTk
 import random
@@ -8,8 +7,7 @@ from game_logic import GameController
 
 
 class OAnQuanGUI:
-    """Quản lý giao diện người dùng."""
-    
+    #Khởi tạo giao diện
     def __init__(self, root):
         self.root = root
         self.root.title(WINDOW_TITLE)
@@ -33,7 +31,7 @@ class OAnQuanGUI:
         self.show_menu()
     
     def load_all_images(self):
-        """Load và cache tất cả hình ảnh."""
+        #Load và cache tất cả hình ảnh
         try:
             self.images['menu'] = self._load_image(IMAGE_MENU, WINDOW_WIDTH, WINDOW_HEIGHT)
             self.images['choose'] = self._load_image(IMAGE_CHOOSE, WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -57,13 +55,13 @@ class OAnQuanGUI:
             print(f" Lỗi load hình ảnh: {e}")
     
     def _load_image(self, path, width, height):
-        """Load và resize ảnh."""
+        #Load và resize ảnh
         img = Image.open(path).convert("RGBA")
         img = img.resize((width, height), Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(img)
     
     def show_menu(self):
-        """Hiển thị màn hình menu."""
+        #Hiển thị màn hình menu
         self.current_screen = "menu"
         self.canvas.delete("all")
         
@@ -100,17 +98,17 @@ class OAnQuanGUI:
         self.canvas.tag_bind('btn_exit', '<Leave>', lambda e: self.canvas.config(cursor=''))
     
     def on_menu_pvp(self):
-        """Xử lý chọn chế độ PvP."""
+        #Xử lý chọn chế độ PvP
         self.game_mode = "pvp"
         self.show_game()
     
     def on_menu_pve(self):
-        """Xử lý chọn chế độ PvE."""
+        #Xử lý chọn chế độ PvE
         self.game_mode = "pve"
         self.show_choose_difficulty()
     
     def show_choose_difficulty(self):
-        """Hiển thị màn hình chọn độ khó."""
+        #Hiển thị màn hình chọn độ khó
         self.current_screen = "choose"
         self.canvas.delete("all")
         
@@ -157,13 +155,13 @@ class OAnQuanGUI:
         self.canvas.tag_bind('btn_back', '<Leave>', lambda e: self.canvas.config(cursor=''))
     
     def on_choose_difficulty(self, difficulty):
-        """Xử lý chọn độ khó."""
+        #Xử lý chọn độ khó
         self.difficulty = difficulty
         print(f"Đã chọn độ khó: {difficulty}")
         self.show_game()
     
     def show_game(self):
-        """Hiển thị màn hình game."""
+        #Hiển thị màn hình game
         self.current_screen = "game"
         self.canvas.delete("all")
         
@@ -202,7 +200,7 @@ class OAnQuanGUI:
         print(f" Lượt chơi: Player {self.game_controller.current_player}")
     
     def draw_all_stones(self):
-        """Vẽ tất cả đá trên bàn cờ."""
+        #Vẽ tất cả đá trên bàn cờ
         self.canvas.delete("stone")
         
         if not hasattr(self, '_stone_images'):
@@ -227,7 +225,7 @@ class OAnQuanGUI:
         self.canvas.tag_raise('direction_arrow')
     
     def draw_stone(self, stone, size=None):
-        """Vẽ một viên đá."""
+        #Vẽ một viên đá
         try:
             if size is None:
                 if stone.type == "Quan":
@@ -249,7 +247,7 @@ class OAnQuanGUI:
             print(f"Lỗi vẽ đá {stone}: {e}")
     
     def draw_captured_stones(self, player):
-        """Vẽ đá ăn được trong vùng điểm."""
+        #Vẽ đá ăn được trong vùng điểm
         if player == 1:
             area = SCORE_AREA_P1
             stones = self.game_board.player1_captured
@@ -274,7 +272,7 @@ class OAnQuanGUI:
                 self.draw_stone(stone, size=STONE_SIZE_CAPTURED)
     
     def draw_stone_counts(self):
-        """Vẽ số đá trong mỗi ô."""
+        #Vẽ số đá trong mỗi ô
         self.canvas.delete("stone_count")
         
         for cell_id, cell in self.game_board.cells.items():
@@ -290,7 +288,7 @@ class OAnQuanGUI:
                 )
     
     def draw_scores(self):
-        """Vẽ điểm số của các player."""
+        #Vẽ điểm số của các player
         self.canvas.delete("score_text")
         
         score1 = self.game_board.calculate_score(1)
@@ -329,7 +327,7 @@ class OAnQuanGUI:
         )
     
     def on_canvas_click(self, event):
-        """Xử lý click vào canvas."""
+        #Xử lý click vào canvas
         x, y = event.x, event.y
         
         clicked_cell = None
@@ -344,11 +342,11 @@ class OAnQuanGUI:
             self.game_controller.on_cell_click(clicked_cell)
     
     def on_undo(self):
-        """Xử lý nút Undo."""
+        #Xử lý nút Undo
         print("Undo chưa được implement")
     
     def show_hand(self, hand_type, x, y):
-        """Hiển thị bàn tay."""
+        #Hiển thị bàn tay
         if self.hand_image_id:
             self.canvas.delete(self.hand_image_id)
         
@@ -361,13 +359,13 @@ class OAnQuanGUI:
         self.canvas.tag_raise('hand')
     
     def hide_hand(self):
-        """Ẩn bàn tay."""
+        #Ẩn bàn tay
         if self.hand_image_id:
             self.canvas.delete(self.hand_image_id)
             self.hand_image_id = None
     
     def show_winner(self, winner):
-        """Hiển thị dialog thắng."""
+        #Hiển thị dialog thắng
         overlay = self.canvas.create_rectangle(
             0, 0, WINDOW_WIDTH, WINDOW_HEIGHT,
             fill='black', stipple='gray50',
@@ -436,7 +434,7 @@ class OAnQuanGUI:
 
 
 def main():
-    """Entry point."""
+    #Entry point
     root = tk.Tk()
     app = OAnQuanGUI(root)
     root.mainloop()

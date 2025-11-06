@@ -1,11 +1,10 @@
-"""Game logic và điều khiển animation."""
 import time
 from constants import *
 from ai import OAnQuanAI
 
 
 class GameController:
-    """Điều khiển logic game và animation."""
+    #Điều khiển logic game và animation
     
     def __init__(self, gui, game_board, game_mode=None, difficulty=None):
         self.gui = gui
@@ -27,14 +26,14 @@ class GameController:
             self.ai = None
     
     def get_direction_offset(self, direction):
-        """Chuyển đổi direction thành offset theo góc nhìn của player."""
+        #Chuyển đổi direction thành offset theo góc nhìn của player
         if self.current_player == 1:
             return 1 if direction == 'left' else -1
         else:
             return -1 if direction == 'left' else 1
         
     def can_select_cell(self, cell_id):
-        """Kiểm tra ô có thể chọn không."""
+        #Kiểm tra ô có thể chọn không
         if cell_id in QUAN_CELLS:
             return False
         if self.board.cells[cell_id].is_empty():
@@ -45,7 +44,7 @@ class GameController:
             return cell_id in PLAYER2_CELLS
     
     def on_cell_click(self, cell_id):
-        """Xử lý khi click vào ô."""
+        #Xử lý khi click vào ô
         if self.animation_running:
             return
         
@@ -69,7 +68,7 @@ class GameController:
             self.direction_arrows_visible = False
     
     def hide_selection(self):
-        """Ẩn tất cả selection."""
+        #Ẩn tất cả selection
         self.gui.hide_hand()
         self.hide_direction_arrows()
         self.selected_cell = None
@@ -77,12 +76,12 @@ class GameController:
         self.direction_arrows_visible = False
     
     def show_hand_h0(self, cell_id):
-        """Hiển thị bàn tay h0."""
+        #Hiển thị bàn tay h0
         x, y = self.board.cells[cell_id].center
         self.gui.show_hand('h0', x, y)
     
     def show_direction_arrows(self, cell_id):
-        """Hiển thị nút chọn hướng trái/phải."""
+        #Hiển thị nút chọn hướng trái/phải
         x, y = self.board.cells[cell_id].center
         arrow_y = y + 50
         spacing = 60
@@ -114,11 +113,11 @@ class GameController:
                                 lambda e: self.gui.canvas.config(cursor=''))
     
     def hide_direction_arrows(self):
-        """Ẩn nút chọn hướng."""
+        #Ẩn nút chọn hướng
         self.gui.canvas.delete('direction_arrow')
     
     def start_move(self, direction):
-        """Bắt đầu di chuyển đá."""
+        #Bắt đầu di chuyển đá
         if self.selected_cell is None or self.animation_running:
             return
         
@@ -129,7 +128,7 @@ class GameController:
         ))
     
     def distribute_stones(self, start_cell, direction):
-        """Rải quân theo luật game."""
+        #Rải quân theo luật game
         stones = self.board.pick_stones(start_cell)
         num_stones = len(stones)
         
@@ -184,7 +183,7 @@ class GameController:
             self.gui.root.after(100, lambda: self.distribute_stones(next_cell, direction))
     
     def check_and_capture(self, current_cell, empty_cell, direction):
-        """Kiểm tra và ăn quân."""
+        #Kiểm tra và ăn quân
         self.animate_hand_move(
             self.board.cells[current_cell].center,
             self.board.cells[empty_cell].center,
@@ -245,7 +244,7 @@ class GameController:
             self.end_turn()
     
     def animate_hand_move(self, from_pos, to_pos, hand_type):
-        """Animation di chuyển bàn tay."""
+        #Animation di chuyển bàn tay
         steps = 10
         for step in range(steps + 1):
             t = step / steps
@@ -256,7 +255,7 @@ class GameController:
             time.sleep(0.02)
     
     def end_turn(self):
-        """Kết thúc lượt chơi."""
+        #Kết thúc lượt chơi
         self.gui.hide_hand()
         self.hide_selection()
         self.animation_running = False
@@ -270,7 +269,7 @@ class GameController:
             self.switch_turn()
     
     def print_ai_log(self):
-        """In bảng nhật ký AI."""
+        #In bảng nhật ký AI
         log = self.ai.get_log_stats()
         print("\n" + "="*60)
         print("  BẢNG NHẬT KÝ AI - TỐI ƯU TỐC ĐỘ")
@@ -289,7 +288,7 @@ class GameController:
         print("="*60 + "\n")
     
     def switch_turn(self):
-        """Chuyển lượt chơi."""
+        #Chuyển lượt chơi
         self.current_player = 2 if self.current_player == 1 else 1
         
         if self.current_player == 1:
@@ -308,7 +307,7 @@ class GameController:
             self.gui.root.after(500, self.ai_make_move)
     
     def ai_make_move(self):
-        """AI tự động chọn nước đi."""
+        #AI tự động chọn nước đi
         if self.animation_running or self.current_player != 2:
             return
         
@@ -325,7 +324,7 @@ class GameController:
             print("AI không tìm thấy nước đi hợp lệ")
     
     def borrow_and_distribute(self):
-        """Rải lại 5 dân khi hết dân, vay nếu cần."""
+        #Rải lại 5 dân khi hết dân, vay nếu cần
         if self.current_player == 1:
             captured = self.board.player1_captured
             my_cells = PLAYER1_CELLS
@@ -374,13 +373,13 @@ class GameController:
         print(f"Player {self.current_player} rải lại 5 dân - Sẵn sàng chơi tiếp")
     
     def check_game_over(self):
-        """Kiểm tra game kết thúc."""
+        #Kiểm tra game kết thúc
         quan_5_empty = self.board.cells[5].is_empty()
         quan_11_empty = self.board.cells[11].is_empty()
         return quan_5_empty and quan_11_empty
     
     def get_winner(self):
-        """Xác định người thắng."""
+        #Xác định người thắng
         print("Hết quan - Bắt đầu hốt tàn cuộc!")
         
         for cell_id in PLAYER1_CELLS:
